@@ -14,9 +14,9 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db.init_app(app)
 
 
-# ------------------------
-# Home
-# ------------------------
+# ========================
+# HOME
+# ========================
 
 @app.route("/")
 def home():
@@ -25,14 +25,18 @@ def home():
     })
 
 
-# ------------------------
-# Products
-# ------------------------
+# ========================
+# PRODUCTS
+# ========================
 
 @app.route("/products", methods=["GET"])
 def get_products():
     products = Product.query.all()
-    return jsonify([product.to_dict() for product in products])
+
+    return jsonify([
+        product.to_dict()
+        for product in products
+    ])
 
 
 @app.route("/products", methods=["POST"])
@@ -45,7 +49,7 @@ def add_product():
         category=data["category"],
         price=data["price"],
         stock=data["stock"],
-        image=data["image"]
+        image=data.get("image")
     )
 
     db.session.add(product)
@@ -54,24 +58,33 @@ def add_product():
     return jsonify(product.to_dict()), 201
 
 
-# ------------------------
-# Orders
-# ------------------------
+
+# ========================
+# ORDERS
+# ========================
 
 @app.route("/orders", methods=["GET"])
 def get_orders():
+
     orders = Order.query.all()
-    return jsonify([order.to_dict() for order in orders])
+
+    return jsonify([
+        order.to_dict()
+        for order in orders
+    ])
+
 
 
 @app.route("/orders", methods=["POST"])
 def add_order():
+
     data = request.json
 
     order = Order(
         customer=data["customer"],
         phone=data["phone"],
-        address=data["address"]
+        address=data["address"],
+        status="Nouveau"
     )
 
     db.session.add(order)
@@ -80,18 +93,62 @@ def add_order():
     return jsonify(order.to_dict()), 201
 
 
-# ------------------------
-# Reviews
-# ------------------------
+
+@app.route("/orders/<int:id>", methods=["PUT"])
+def update_order_status(id):
+
+    order = Order.query.get(id)
+
+    if not order:
+        return jsonify({
+            "error": "Order not found"
+        }), 404
+
+
+    data = request.json
+
+    allowed_status = [
+        "Nouveau",
+        "Confirmé",
+        "Ne répond pas",
+        "Expédiée"
+    ]
+
+
+    if data["status"] not in allowed_status:
+        return jsonify({
+            "error": "Invalid status"
+        }), 400
+
+
+    order.status = data["status"]
+
+    db.session.commit()
+
+
+    return jsonify(order.to_dict())
+
+
+
+# ========================
+# REVIEWS
+# ========================
 
 @app.route("/reviews", methods=["GET"])
 def get_reviews():
+
     reviews = Review.query.all()
-    return jsonify([review.to_dict() for review in reviews])
+
+    return jsonify([
+        review.to_dict()
+        for review in reviews
+    ])
+
 
 
 @app.route("/reviews", methods=["POST"])
 def add_review():
+
     data = request.json
 
     review = Review(
@@ -102,18 +159,22 @@ def add_review():
         comment=data["comment"]
     )
 
+
     db.session.add(review)
     db.session.commit()
+
 
     return jsonify(review.to_dict()), 201
 
 
-# ------------------------
-# Create Database Tables
-# ------------------------
+
+# ========================
+# DATABASE
+# ========================
 
 with app.app_context():
     db.create_all()
+
 
 
 if __name__ == "__main__":
